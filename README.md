@@ -13,22 +13,42 @@
 
 ## 下载
 
-最新版 **v1.0.0** · 17.6 MB · Android 8.0+ · 无需 Root
+最新版 **v1.1.0**（Android 8.0+，无需 Root）。两个包功能完全相同，**任选一个**：
 
-| 渠道 | 链接 | 说明 |
+| 版本 | 体积 | 说明 |
 | --- | --- | --- |
-| **jsDelivr CDN** | [`TrailRun-1.0.0.apk`](https://cdn.jsdelivr.net/gh/wangwangrr/TrailRun@main/release/TrailRun-1.0.0.apk) | 有国内节点，通常最快 —— **推荐国内用户用这个** |
-| GitHub Release | [最新 Release](https://github.com/wangwangrr/TrailRun/releases/latest) | 官方渠道；下载走 `github.com`，国内可能连不上 |
-| 仓库内直链 | [`raw`](https://raw.githubusercontent.com/wangwangrr/TrailRun/main/release/TrailRun-1.0.0.apk) | 备用 |
+| **精简版**（推荐） | **1.9 MB** | 经 R8 代码裁剪，日常使用选这个 |
+| 调试版 | 17.2 MB | 不裁剪、可调试；精简版万一出问题时用它回退 |
+
+**国内优先走 jsDelivr**（有国内节点，通常最快）：
+
+- 精简版 → [`TrailRun-1.1.0.apk`](https://cdn.jsdelivr.net/gh/wangwangrr/TrailRun@main/release/TrailRun-1.1.0.apk)
+- 调试版 → [`TrailRun-1.1.0-debug.apk`](https://cdn.jsdelivr.net/gh/wangwangrr/TrailRun@main/release/TrailRun-1.1.0-debug.apk)
+
+其他渠道：[GitHub Release](https://github.com/wangwangrr/TrailRun/releases/latest) ·
+[raw 直链目录](https://raw.githubusercontent.com/wangwangrr/TrailRun/main/release/)
+
+**两个包签名相同，可以互相覆盖安装** —— 来回切换不会丢路线预设。
 
 装好后按下面「二、在手机上使用」的 4 步完成设置。
 
-> 为什么同一个 APK 放三个地方：GitHub Release 的下载链接会 302 到
-> `objects.githubusercontent.com`，而 `github.com` 本身在国内经常不可达 ——
+> **体积为什么差 9 倍**：调试版不做代码裁剪，`classes.dex` 解压后 54 MB ——
+> 光 `material-icons-extended` 一个库就带着几千个图标，而本工程实际只用到十几个。
+> 精简版开 R8 后只保留真正引用的，dex 降到 2.7 MB。
+>
+> **精简版的取舍要说清楚**：R8 会内联方法、合并类，所以「搜类名确认功能完整」
+> 这个静态验证办法在它身上不成立 —— 构建时会发现所有 `*Kt` 文件类都「消失」了，
+> 其实是被内联进了调用点。为此我关掉了混淆（`-dontobfuscate`，只多 76 KB）
+> 以保留基本的可验证性，但优化仍会合并类。
+> **这个包我无法在真机上运行验证**，建议装上后先过一遍关键流程
+> （启动页 → 口令页 → 地图加载 → 手绘轨迹 → 开始模拟），有任何异常就装回调试版。
+
+> **为什么同一个 APK 放多个地方**：GitHub Release 的下载链接会 302 到
+> `release-assets.githubusercontent.com`，而 `github.com` 本身在国内经常不可达 ——
 > 实测本机环境就是 `github.com` 超时、而其余 GitHub 域名正常。
-> 把 APK 在仓库里也存一份，就能借道 jsDelivr（国内有节点）和 raw 直链。
-> 代价是仓库多了 17.6 MB，且每次更新 APK 都会在 git 历史里留一份。
-> 另外 jsDelivr 对单文件有 **20 MB** 限制，APK 再大就得换别的方式。
+> 把 APK 在仓库里也存一份，就能借道 jsDelivr 和 raw 直链。
+> 注意 jsDelivr 对单文件有 **20 MB** 限制，所以调试版（17.2 MB）已经接近上限，
+> 再大就得换方式。
 
 ---
 
