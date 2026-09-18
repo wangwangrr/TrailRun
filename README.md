@@ -11,6 +11,27 @@
 
 ---
 
+## 下载
+
+最新版 **v1.0.0** · 17.6 MB · Android 8.0+ · 无需 Root
+
+| 渠道 | 链接 | 说明 |
+| --- | --- | --- |
+| **jsDelivr CDN** | [`TrailRun-1.0.0.apk`](https://cdn.jsdelivr.net/gh/wangwangrr/TrailRun@main/release/TrailRun-1.0.0.apk) | 有国内节点，通常最快 —— **推荐国内用户用这个** |
+| GitHub Release | [最新 Release](https://github.com/wangwangrr/TrailRun/releases/latest) | 官方渠道；下载走 `github.com`，国内可能连不上 |
+| 仓库内直链 | [`raw`](https://raw.githubusercontent.com/wangwangrr/TrailRun/main/release/TrailRun-1.0.0.apk) | 备用 |
+
+装好后按下面「二、在手机上使用」的 4 步完成设置。
+
+> 为什么同一个 APK 放三个地方：GitHub Release 的下载链接会 302 到
+> `objects.githubusercontent.com`，而 `github.com` 本身在国内经常不可达 ——
+> 实测本机环境就是 `github.com` 超时、而其余 GitHub 域名正常。
+> 把 APK 在仓库里也存一份，就能借道 jsDelivr（国内有节点）和 raw 直链。
+> 代价是仓库多了 17.6 MB，且每次更新 APK 都会在 git 历史里留一份。
+> 另外 jsDelivr 对单文件有 **20 MB** 限制，APK 再大就得换别的方式。
+
+---
+
 ## 一、功能一览
 
 | 能力 | 说明 |

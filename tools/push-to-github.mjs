@@ -16,6 +16,9 @@
 // 需要 token 的权限：
 //   - 推到已有仓库：fine-grained token 给该仓库 Contents: Read and write，或 classic token 勾 repo
 //   - 加 --create  ：另外需要 Account permissions → Administration: Read and write
+//   - 要推 .github/workflows/ 下的文件：必须**额外**有 workflow scope。
+//     缺了它，整棵 tree 都会被拒绝，而且 GitHub 把它伪装成 `404 Not Found`
+//     （不是 403）—— 看起来像仓库不存在或端点写错。脚本会自动跳过这些文件并提示。
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
 import { join, relative, sep, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -56,9 +59,25 @@ const ignoreRules = readFileSync(join(ROOT, '.gitignore'), 'utf8')
   .split(/\r?\n/)
   .map((l) => l.trim())
   .filter((l) => l && !l.startsWith('#'))
-  .map(toRegex)
+  .map((line) => {
+    const negated = line.startsWith('!')
+    return { rx: toRegex(negated ? line.slice(1) : line), negated }
+  })
 
-const isIgnored = (relPath) => ignoreRules.some((rx) => rx.test(relPath))
+/**
+ * 按 .gitignore 语义判断：**后面的规则覆盖前面的**，`!` 表示取消忽略。
+ *
+ * 这一点是必需的，不是锦上添花：`*.apk` 会忽略所有 APK，
+ * 而 `!release/*.apk` 要把 release 目录里那一份捞回来 ——
+ * 那是给国内网络准备的下载副本，漏掉它整个方案就没意义了。
+ */
+const isIgnored = (relPath) => {
+  let ignored = false
+  for (const rule of ignoreRules) {
+    if (rule.rx.test(relPath)) ignored = !rule.negated
+  }
+  return ignored
+}
 
 // ---------------------------------------------------------------- 收集文件
 

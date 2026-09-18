@@ -12,6 +12,13 @@ local.properties
 *.apk
 *.keystore
 
+# ---- Release 目录里放一份 APK：给国内网络留一条能走通的下载路径 ----
+# GitHub Release 的下载走 github.com，国内经常连不上；
+# 仓库内的文件则可以通过 jsDelivr CDN 和 raw 直链拿到。
+# 注意 `*.apk` 在上面，这里必须用 `!` 取消忽略 —— 顺序有意义，后面的覆盖前面的。
+!release/
+!release/*.apk
+
 # ---- 本机工具链与缓存：体积以 GB 计，绝对不能入库 ----
 # .toolchain/ 里是 Gradle 发行版、ffmpeg、Android Studio 安装包、osmdroid 源码、瓦片样张
 .toolchain/
