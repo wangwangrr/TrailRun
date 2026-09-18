@@ -397,12 +397,14 @@ const isWorkflowFile = (p) => p.startsWith('.github/workflows/')
 const workflowEntries = tree.filter((e) => isWorkflowFile(e.path))
 
 let treeList = tree
+const skippedWorkflow = []
 if (!hasWorkflowScope && workflowEntries.length) {
   console.warn(
     `\n注意：token 的 scope 是 [${scopes.join(', ')}]，不含 workflow，` +
       `无法通过 API 写入 .github/workflows/ 下的文件。\n` +
       `      本次先跳过 ${workflowEntries.length} 个：${workflowEntries.map((e) => e.path).join(', ')}`
   )
+  skippedWorkflow.push(...workflowEntries.map((e) => e.path))
   treeList = tree.filter((e) => !isWorkflowFile(e.path))
 }
 
@@ -455,6 +457,24 @@ if (parentSha) {
   )
 }
 
+// 顺手补一个仓库描述：新建仓库时如果没填，页面顶部会是空的。
+// 只在当前为空时才写，免得覆盖掉你后来手动改的描述。
+if (!info.description) {
+  const patched = await api('PATCH', `/repos/${owner}/${repoName}`, token, {
+    description: '轨迹跑 TrailRun —— 校园跑轨迹模拟与虚拟定位（Android / Kotlin / Compose）',
+  })
+  if (patched.status >= 200 && patched.status < 300) console.log('已补上仓库描述。')
+}
+
 console.log(`\n完成 -> ${info.html_url}`)
-console.log('push 之后 GitHub Actions 会自动编译 APK（.github/workflows/build-apk.yml），')
-console.log('在仓库的 Actions 页面可以下载构建产物。')
+console.log(`已提交 ${treeList.length} 个文件（本地共 ${files.length} 个）`)
+
+if (skippedWorkflow.length) {
+  console.log(
+    '\n想让 GitHub Actions 自动编译 APK，还得把 workflow 文件弄上去，二选一：\n' +
+      '  A) 重新生成 token 时把 workflow 和 repo 一起勾上，再跑一次本脚本；\n' +
+      '  B) 在仓库网页上手动新建 .github/workflows/build-apk.yml，粘贴本地文件内容。'
+  )
+} else {
+  console.log('\nGitHub Actions 会在 push 后自动编译 APK，在仓库的 Actions 页面可以下载构建产物。')
+}
