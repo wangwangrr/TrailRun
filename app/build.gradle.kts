@@ -29,10 +29,11 @@ android {
         applicationId = "com.trailrun.mockgps"
         minSdk = 26
         targetSdk = 34
-        // 2 / 1.1.0：新增 R8 裁剪的 release 版（体积从 17.6 MB 降到 4 MB 级）。
-        // versionCode 必须比已装的 1 大，否则新包盖不上旧包。
-        versionCode = 2
-        versionName = "1.1.0"
+        // 3 / 1.1.1：1.1.0 那个开着 R8 **优化**的 release 包真机闪退，
+        // 改成「只裁剪、不优化」（-dontoptimize）后重新发版。
+        // versionCode 必须递增，否则新包盖不上手机上已装的旧包。
+        versionCode = 3
+        versionName = "1.1.1"
         vectorDrawables { useSupportLibrary = true }
     }
 
@@ -62,7 +63,15 @@ android {
                 signingConfig = signingConfigs.getByName("shared")
             }
             proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
+                // 用 proguard-android.txt，**不是** -optimize 那份。
+                //
+                // 第一版用的 -optimize，构建出来的包真机实测**会闪退**。
+                // 首要可疑点是 R8 的优化阶段：方法内联会把 @Composable 函数、
+                // Kotlin object 的方法直接内联进调用点，类合并会把小类并进大类，
+                // 而 Compose 运行时对编译器生成的调用结构是有约定的。
+                // 换成不带 optimize 的这份，R8 只做裁剪（移除未使用的类 / 方法 / 字段），
+                // 体积会比激进版大一些，换回「能跑」。
+                getDefaultProguardFile("proguard-android.txt"),
                 "proguard-rules.pro"
             )
         }

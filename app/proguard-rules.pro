@@ -18,6 +18,24 @@
 # 不混淆不会有功能损失，代价只是体积略大。
 -dontobfuscate
 
+# --- 关闭优化（关键） -----------------------------------------------------
+# 见 build.gradle.kts 里的说明：第一版开着优化构建出来的包，真机实测**会闪退**。
+# AGP 的 proguard-android.txt 本身已经带 -dontoptimize，这里再写一遍是为防止
+# R8 full mode 把它盖掉 —— 宁可重复，也不要静默失效。
+-dontoptimize
+
+# --- ViewModel 是通过反射创建的 -------------------------------------------
+# androidx.lifecycle 用反射去找 AndroidViewModel(Application) 这个构造函数。
+# 构造函数一旦被裁掉或改了签名，打开主界面就会抛 NoSuchMethodException 直接闪退。
+-keep class com.trailrun.mockgps.ui.MainViewModel {
+    <init>(android.app.Application);
+}
+
+# --- Compose 编译器生成的单例持有类 ---------------------------------------
+# 每个含 @Composable lambda 的文件都会生成一个 ComposableSingletons$XxxKt，
+# 运行时按固定名字去取用里面持有的 lambda 实例。
+-keep class **ComposableSingletons$* { *; }
+
 # --- osmdroid -------------------------------------------------------------
 # 整包保留。它在 6.1.18 里有多处绕路：瓦片源实例会被 provider 缓存后按名字比对、
 # Configuration 从 SharedPreferences 逐键读取、部分内容提供者走反射。
