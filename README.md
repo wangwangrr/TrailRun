@@ -271,6 +271,46 @@ APK 已用 debug 证书签名（v2 方案，`apksigner verify` 通过），可�
 > 若从旧版本升级：因为权限清单里新增了 `ACCESS_MOCK_LOCATION`，
 > 建议先卸载旧版再装新版，或用 `adb install -r` 覆盖安装。
 
+### 发布新版本（必须带更新说明）
+
+发布走 `tools/release-apk.mjs`，它会：
+
+1. 读 `CHANGELOG.md`，提取 `## [版本号]` 那一段，作为 GitHub Release 的「更新说明」；
+2. **提取不到就拒绝发布**（退出码 1）—— 让「忘记写更新说明」表现为一次发布失败，
+   而不是一次静默的遗漏；
+3. 把 `release/` 目录下的 APK 作为 Assets 上传。
+
+```powershell
+# 1) 先在 CHANGELOG.md 里写清楚这一版改了什么（这一步不能省）
+# 2) 改 app/build.gradle.kts 里的 versionCode（必须递增）和 versionName
+# 3) 构建两个变体，放进 release/
+.\gradlew.bat :app:assembleRelease :app:assembleDebug
+copy app\build\outputs\apk\release\app-release.apk release\TrailRun-x.y.z.apk
+copy app\build\outputs\apk\debug\app-debug.apk   release\TrailRun-x.y.z-debug.apk
+# 4) 推送源码 + 发布
+node tools\push-to-github.mjs wangwangrr/TrailRun
+node tools\release-apk.mjs  wangwangrr/TrailRun --tag vx.y.z
+```
+
+**已发布的版本一律保留**，即使有问题也只标注、不删除 —— 别人可能已经装了，
+撤掉版本号会让「我装的是哪一版」无从查起。
+
+给历史版本补写说明（不重新上传 APK）：
+
+```powershell
+node tools\release-apk.mjs wangwangrr/TrailRun --tag v1.0.0 --notes-only
+```
+
+撤回一个确实需要下架的版本：
+
+```powershell
+node tools\delete-release.mjs wangwangrr/TrailRun v1.1.0   # 记录同步写进 CHANGELOG
+```
+
+> 唯一一次例外是 **v1.1.0**：它启动即闪退，Release 与 tag 都已撤下。
+> 但它在 `CHANGELOG.md` 里留了完整记录（含根因与教训），
+> 版本号也没有被回收 —— 这正是「保留历史」的意义。
+
 ### 本机网络环境的坑（已解决，供以后参考）
 
 1. **`services.gradle.org` 与 GitHub Releases 不可达** —— Gradle 发行版和 `gradle-wrapper.jar` 都拿不到。

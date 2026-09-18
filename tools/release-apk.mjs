@@ -25,9 +25,48 @@ const flag = (name) => {
   return i >= 0 ? argv[i + 1] : null
 }
 const dry = argv.includes('--dry')
+/** 只回填/更新更新说明，不重新上传 APK —— 用于给历史版本补写说明。 */
+const notesOnly = argv.includes('--notes-only')
 const target = argv.find((a) => !a.startsWith('--') && /^[^/]+\/[^/]+$/.test(a))
-const tag = flag('--tag') || 'v1.1.0'
+
+// ---------------- 更新日志 ----------------
+//
+// 发布**必须**带更新说明，而且说明写在 CHANGELOG.md 里、由脚本提取，
+// 不是发布时随手敲一段。理由：说明是给人看的长期记录，
+// 放在仓库里能被 diff、能被追溯；写在命令参数里，发完就没了。
+//
+// 提取不到对应版本的段落就**直接拒绝发布**，这是刻意的 ——
+// 让「忘记写更新说明」表现为一次发布失败，而不是一次静默的遗漏。
+const CHANGELOG_PATH = join(ROOT, 'CHANGELOG.md')
+
+function readChangelog(ver) {
+  if (!existsSync(CHANGELOG_PATH)) return null
+  const lines = readFileSync(CHANGELOG_PATH, 'utf8').split(/\r?\n/)
+  const start = lines.findIndex((l) => l.startsWith(`## [${ver}]`))
+  if (start < 0) return null
+  // 一直到下一个版本标题（或文件末尾）
+  let end = lines.length
+  for (let i = start + 1; i < lines.length; i++) {
+    if (lines[i].startsWith('## [')) {
+      end = i
+      break
+    }
+  }
+  // 去掉末尾空行与分隔线
+  while (end > start && (lines[end - 1].trim() === '' || lines[end - 1].trim() === '---')) end--
+  return lines.slice(start + 1, end).join('\n').trim()
+}
+
+/** 取 CHANGELOG 里最新的版本号，作为 --tag 的默认值。 */
+function latestVersion() {
+  if (!existsSync(CHANGELOG_PATH)) return null
+  const m = readFileSync(CHANGELOG_PATH, 'utf8').match(/^## \[([^\]\s]+)\]/m)
+  return m ? m[1] : null
+}
+
+const tag = flag('--tag') || `v${latestVersion() || '1.0.0'}`
 const version = tag.replace(/^v/, '')
+const notes = readChangelog(version)
 
 if (!dry && !target) {
   console.error('用法: node tools/release-apk.mjs <owner>/<repo> [--tag v1.1.0] [--apk 路径]...')
@@ -194,7 +233,20 @@ if (dry) {
 const light = apks.filter((a) => !/debug/i.test(a.name))
 const heavy = apks.filter((a) => /debug/i.test(a.name))
 
+if (!notes) {
+  console.error(`\nCHANGELOG.md 里找不到版本 [${version}] 的条目。`)
+  console.error('发布必须带更新说明 —— 先在 CHANGELOG.md 里补上这一版改了什么，再重跑本脚本。')
+  console.error(`（标题行写成： ## [${version}] - YYYY-MM-DD）`)
+  process.exit(1)
+}
+
 const bodyLines = [
+  '## 更新说明',
+  '',
+  notes,
+  '',
+  '---',
+  '',
   '## 下载安装',
   '',
   `共 ${apks.length} 个包，功能完全相同，**任选一个**：`,
@@ -232,6 +284,47 @@ if (light.length && heavy.length) {
     '> 光 `material-icons-extended` 一个库就带几千个图标，实际只用到十几个。',
     '> 精简版开 R8 后 dex 降到 2.7 MB。'
   )
+}
+
+// --notes-only：只把更新说明写回已有的 Release，不碰 APK。
+// 用于给历史上那些「发的时候还没写说明」的版本补记录。
+if (notesOnly) {
+  const found = await api('GET', `/repos/${owner}/${repoName}/releases/tags/${tag}`)
+  if (found.status !== 200) {
+    console.error(`Release ${tag} 不存在，无法只更新说明。`)
+    process.exit(1)
+  }
+  // 历史版本只补说明，**不套用**上面按当前 release/ 目录生成的下载表格 ——
+  // 那会把 v1.2.0 的文件名写进 v1.0.0 的页面里，张冠李戴。
+  const historical = [
+    '## 更新说明',
+    '',
+    notes,
+    '',
+    '---',
+    '',
+    '## 安装',
+    '',
+    '1. 在本页下方的 Assets 里下载 APK（精简版约 2.5 MB，调试版约 17 MB）',
+    '2. 手机上点击安装，系统提示「未知来源」时允许',
+    '3. 打开应用，按「说明」页的 4 步完成首次配置',
+    '',
+    '- Android 8.0 及以上（minSdk 26），无需 Root',
+    '- 首次使用需在系统**开发者选项**里把本应用设为「模拟位置信息应用」',
+    '- 底图使用 OpenStreetMap，需要联网加载瓦片',
+    `- 源码：https://github.com/${owner}/${repoName}`,
+    '',
+    '> 历史版本一律保留，方便对照与回退；有已知问题的版本会在说明里标注。',
+  ].join('\n')
+  const patched = await api('PATCH', `/repos/${owner}/${repoName}/releases/${found.json.id}`, {
+    body: historical,
+  })
+  if (patched.status !== 200) {
+    console.error(`更新说明失败：HTTP ${patched.status} ${patched.text.slice(0, 200)}`)
+    process.exit(1)
+  }
+  console.log(`已更新 ${tag} 的更新说明：${patched.json.html_url}`)
+  process.exit(0)
 }
 
 let release = null
