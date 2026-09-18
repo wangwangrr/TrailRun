@@ -29,11 +29,10 @@ android {
         applicationId = "com.trailrun.mockgps"
         minSdk = 26
         targetSdk = 34
-        // 3 / 1.1.1：1.1.0 那个开着 R8 **优化**的 release 包真机闪退，
-        // 改成「只裁剪、不优化」（-dontoptimize）后重新发版。
+        // 4 / 1.2.0：验证页增加「随机口算」方式，可与「名字缩写」任选其一进入。
         // versionCode 必须递增，否则新包盖不上手机上已装的旧包。
-        versionCode = 3
-        versionName = "1.1.1"
+        versionCode = 4
+        versionName = "1.2.0"
         vectorDrawables { useSupportLibrary = true }
     }
 

@@ -77,7 +77,7 @@ fun RootScreen(
 
         // 启动页之后、主界面之前。locked 来自本地持久化：
         // 本设备输对过一次之后它永远是 false，这里就再也不会经过。
-        locked -> LockScreen(onUnlock = { vm.unlock(it) })
+        locked -> LockScreen(onUnlock = { vm.unlock() })
 
         else -> RootContent(
             vm = vm,

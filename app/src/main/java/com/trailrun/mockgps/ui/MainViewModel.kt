@@ -5,7 +5,6 @@ import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.trailrun.mockgps.TrailRunApp
-import com.trailrun.mockgps.core.AppPassword
 import com.trailrun.mockgps.core.Geo
 import com.trailrun.mockgps.core.LocationHelper
 import com.trailrun.mockgps.core.PathSimplify
@@ -190,11 +189,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * 写盘放在这里而不是界面里：解锁是一次持久化事实，
      * 界面只负责把结果画出来。
      */
-    fun unlock(input: String): Boolean {
-        if (!AppPassword.matches(input)) return false
+    /**
+     * 标记本设备已通过验证。
+     *
+     * 校验本身在界面层完成 —— 现在有两种进入方式（名字缩写 / 随机口算），
+     * 各有各的判定逻辑，放在这里会让 ViewModel 同时知道 UI 状态和口令规则。
+     * 这里只负责「写盘 + 解锁」这一件事：一次持久化事实。
+     */
+    fun unlock() {
         runCatching { repo.unlocked = true }
         _locked.value = false
-        return true
     }
 
     // ---------------- 权限 ----------------
