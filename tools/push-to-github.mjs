@@ -22,6 +22,7 @@
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
 import { join, relative, sep, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { createHash } from 'node:crypto'
 import https from 'node:https'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -353,6 +354,37 @@ const refRes = await api('GET', `/repos/${owner}/${repoName}/git/ref/heads/${bra
 const parentSha = refRes.status === 200 ? refRes.json.object.sha : null
 console.log(parentSha ? `已有提交: ${parentSha.slice(0, 7)}（将作为父提交）` : '空仓库：这是第一个提交')
 
+/**
+ * git 的 blob 哈希：`sha1("blob <字节数>\0" + 内容)`。
+ * GitHub 的 `git/blobs` 返回的 sha 就是这个值，所以能直接拿来比对。
+ */
+function gitBlobSha(buf) {
+  return createHash('sha1')
+    .update(Buffer.from(`blob ${buf.length}\0`, 'utf8'))
+    .update(buf)
+    .digest('hex')
+}
+
+// 0) 先取仓库当前的 tree —— 内容没变的文件直接复用已有 blob，不再重传。
+//
+// 这不是可有可无的优化：仓库里存着一份 17.6 MB 的 APK 作为国内下载副本，
+// 全量重传意味着每改一行 Kotlin 都要上传 24 MB（base64 之后）。
+// 有了复用，只有真正变化的文件会走网络。
+const currentTree = await api(
+  'GET',
+  `/repos/${owner}/${repoName}/git/trees/${branch}?recursive=1`,
+  token
+)
+const existingBlobs = new Map()
+if (currentTree.status === 200 && Array.isArray(currentTree.json?.tree)) {
+  for (const e of currentTree.json.tree) {
+    if (e.type === 'blob') existingBlobs.set(e.path, e.sha)
+  }
+  console.log(`仓库现有 ${existingBlobs.size} 个文件，内容未变的直接复用`)
+} else if (currentTree.status !== 404) {
+  console.log(`读取现有 tree 失败（HTTP ${currentTree.status}），本次全量上传`)
+}
+
 // 1) 上传 blob。
 //
 // 并发压到 4（原来是 8）：这条链路对大请求很敏感，同时开太多更容易被干扰。
@@ -374,6 +406,7 @@ function blobPayload(buf) {
 
 const tree = new Array(files.length)
 let done = 0
+let reused = 0
 let cursor = 0
 const CONCURRENCY = 4
 
@@ -382,12 +415,21 @@ async function worker() {
     const i = cursor++
     if (i >= files.length) return
     const f = files[i]
-    const res = await api(
-      'POST',
-      `/repos/${owner}/${repoName}/git/blobs`,
-      token,
-      blobPayload(readFileSync(f.full))
-    )
+    const content = readFileSync(f.full)
+
+    // 内容没变 → 复用仓库里已有的 blob，一个字节都不用传。
+    const localSha = gitBlobSha(content)
+    if (existingBlobs.get(f.rel) === localSha) {
+      tree[i] = { path: f.rel, mode: '100644', type: 'blob', sha: localSha }
+      reused++
+      done++
+      if (done % 10 === 0 || done === files.length) {
+        process.stdout.write(`\r  ${done}/${files.length}（复用 ${reused}，新传 ${done - reused}）`)
+      }
+      continue
+    }
+
+    const res = await api('POST', `/repos/${owner}/${repoName}/git/blobs`, token, blobPayload(content))
     const j = must(res, `上传 ${f.rel}`)
     if (!j?.sha || !/^[0-9a-f]{40}$/.test(j.sha)) {
       throw new Error(`上传 ${f.rel} 返回的 sha 不合法：${JSON.stringify(j?.sha)}`)
@@ -395,7 +437,7 @@ async function worker() {
     tree[i] = { path: f.rel, mode: '100644', type: 'blob', sha: j.sha }
     done++
     if (done % 10 === 0 || done === files.length) {
-      process.stdout.write(`\r  ${done}/${files.length}`)
+      process.stdout.write(`\r  ${done}/${files.length}（复用 ${reused}，新传 ${done - reused}）`)
     }
   }
 }
