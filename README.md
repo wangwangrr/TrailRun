@@ -322,7 +322,8 @@ size    = tileSize * density        // 恒等于 256 * displayDensity
 - **无需 Root**：使用系统公开的 `LocationManager.addTestProvider / setTestProviderLocation`
   接口写入位置，需在「开发者选项 → 选择模拟位置信息应用」中选中本应用。
 - **不做注入**：不修改、不 hook、不注入任何其他应用，只提供一个系统认可的 GPS provider。
-- **轨迹精度**：位置严格按 `设定速度 × 真实经过时间` 沿折线推进，推送频率 5 Hz，
+- **轨迹精度**：位置严格按 `设定速度 × 真实经过时间` 沿折线推进，推送频率 **10 Hz**
+  （100ms 一帧，同时写入 `gps` 与 `network` 两个 provider），
   因此调用间隔抖动不会造成速度偏差。
 - **手绘抽稀**：手指拖动会采样出成百上千个点，先按 2m 最小间距粗过滤，
   再用 Douglas-Peucker 以 6m 容差抽稀，只保留决定形状的拐点。
@@ -510,13 +511,16 @@ TrailRun/
     │   ├── core/CrashLog.kt           未捕获异常堆栈记录
     │   ├── data/RoutePreset.kt        路线预设模型与 JSON 序列化
     │   ├── data/RouteRepository.kt    SharedPreferences 持久化
-    │   ├── service/MockLocationEngine.kt   test provider 挂载与位置注入
-    │   ├── service/MockLocationService.kt  前台服务，5Hz 推送
+    │   ├── service/MockLocationEngine.kt   test provider 挂载、重新挂载与位置注入
+    │   ├── service/MockLocationService.kt  前台服务，10Hz 推送 + 保活 + 心跳
+    │   ├── service/MockHeartbeat.kt    后台存活心跳（判断「失效」是不是进程被冻结）
+    │   ├── service/KeepAlive.kt        唤醒锁 + 常驻窗口，以及系统设置引导入口
     │   ├── service/LiveState.kt       服务 -> 界面的状态通道
     │   ├── service/ServiceStarter.kt  前台服务启动兜底
     │   └── ui/
-    │       ├── RootScreen.kt          底部三页导航
-    │       ├── MainRunScreen.kt       主界面：地图 + 模式切换 + 速度控制
+    │       ├── RootScreen.kt          启动页 / 使用须知 / 口令页 / 底部三页导航
+    │       ├── Disclaimer.kt          使用须知与免责声明（首次启动必须确认）
+    │       ├── MainRunScreen.kt       主界面：地图 + 模式切换 + 速度控制 + 定位诊断
     │       ├── RoutesScreen.kt        预设管理、导入导出
     │       ├── GuideScreen.kt         使用步骤、注意事项、崩溃日志
     │       ├── Common.kt              共用小组件
@@ -704,16 +708,11 @@ D:\app\Android\Sdk\platform-tools\adb.exe logcat -b crash -d
 
 **地图一片空白 / 一直转圈？**
 先看**镜像**。图层按钮里有「底图镜像」，默认「自动」会按内置顺序依次尝试，
-你也可以**手动锁定一个能通的**：
+你也可以**手动锁定一个能通的**。各端点的实测结果见上文
+[底图说明](#底图说明只用-openstreetmap) 里的表格（默认是返回 512×512 的
+`osm.rrze.fau.de/osmhd`）。
 
-| 顺序 | OSM 端点 | 实测结果 |
-| --- | --- | --- |
-| 1 | `a.tile.openstreetmap.fr/hot` | 可用，最快（788ms） |
-| 2 | `a.tile.openstreetmap.fr/osmfr` | 可用（约 2.4s） |
-| 3 | `tile.openstreetmap.de` | 可用（约 2.6s） |
-| 4 | `tile.openstreetmap.org`（官方） | **完全不可达**（多次取样全部 9s 超时） |
-
-同一个对话框里可以点**「测试连通性」**：手机会逐个请求这 4 个端点，
+同一个对话框里可以点**「测试连通性」**：手机会逐个请求这些端点，
 把 HTTP 状态、耗时或具体错误显示在每个镜像下方，并标注「可用 / 失败」。
 照着结果手动锁一个即可。这一步能立刻区分三种情况：
 
