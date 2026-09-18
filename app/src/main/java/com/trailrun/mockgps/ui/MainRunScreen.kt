@@ -33,6 +33,10 @@ import androidx.compose.material.icons.filled.Draw
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FitScreen
+import androidx.compose.material.icons.filled.Gavel
+import androidx.compose.material.icons.filled.BatterySaver
+import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.MoreVert
@@ -100,6 +104,9 @@ import com.trailrun.mockgps.core.TileDiagnostics
 import com.trailrun.mockgps.core.TileEndpoint
 import com.trailrun.mockgps.core.TileProvider
 import com.trailrun.mockgps.core.resolveEndpoint
+import com.trailrun.mockgps.service.KeepAlive
+import com.trailrun.mockgps.service.MockHeartbeat
+import com.trailrun.mockgps.service.MockLocationEngine
 import com.trailrun.mockgps.service.RunStatus
 import com.trailrun.mockgps.ui.components.MapMode
 import com.trailrun.mockgps.ui.components.MapStyle
@@ -145,6 +152,9 @@ fun MainRunScreen(
     var showSearch by remember { mutableStateOf(false) }
     var showCoordinateInput by remember { mutableStateOf(false) }
     var showMoreTools by remember { mutableStateOf(false) }
+    var showLocationDiag by remember { mutableStateOf(false) }
+    var showKeepAlive by remember { mutableStateOf(false) }
+    var showDisclaimer by remember { mutableStateOf(false) }
 
     // 拖图设点模式：显示中心准星，并用按钮确认落点
     var crosshairMode by remember { mutableStateOf(false) }
@@ -325,6 +335,35 @@ fun MainRunScreen(
                             text = { Text("底图与离线设置") },
                             leadingIcon = { Icon(Icons.Filled.Layers, contentDescription = null) },
                             onClick = { showMoreTools = false; showTilePicker = true },
+                        )
+                        // 定位诊断：看模拟位置到底覆盖了哪几个来源。
+                        // 存在的理由很具体 —— 「某些 App 读不到模拟位置」时，
+                        // 第一件要确认的事就是这里，而它从界面上完全看不出来。
+                        DropdownMenuItem(
+                            text = { Text("定位诊断") },
+                            leadingIcon = {
+                                Icon(Icons.Filled.BugReport, contentDescription = null)
+                            },
+                            onClick = { showMoreTools = false; showLocationDiag = true },
+                        )
+                        // 保活设置：实测「切到校园跑就失效」的真正原因是进程被系统冻结
+                        // （1.2.5 心跳数据显示冻结了 137 秒），而不是被反作弊识别。
+                        // 修它必须改系统设置，所以把入口直接放到这里，不让用户自己去翻。
+                        DropdownMenuItem(
+                            text = { Text("保活设置") },
+                            leadingIcon = {
+                                Icon(Icons.Filled.BatterySaver, contentDescription = null)
+                            },
+                            onClick = { showMoreTools = false; showKeepAlive = true },
+                        )
+                        // 首次启动有一道同样内容的关卡，这里提供随时重看的入口 ——
+                        // 「不可用于作弊」这句话只出现一次是记不住的。
+                        DropdownMenuItem(
+                            text = { Text("使用须知") },
+                            leadingIcon = {
+                                Icon(Icons.Filled.Gavel, contentDescription = null)
+                            },
+                            onClick = { showMoreTools = false; showDisclaimer = true },
                         )
                         DropdownMenuItem(
                             text = { Text("查看整条路线") },
@@ -567,6 +606,314 @@ fun MainRunScreen(
             onOpenSettings = onOpenAppDetails,
         )
     }
+
+    if (showLocationDiag) {
+        LocationDiagDialog(
+            context = context,
+            onDismiss = { showLocationDiag = false },
+        )
+    }
+
+    if (showKeepAlive) {
+        KeepAliveDialog(
+            context = context,
+            onDismiss = { showKeepAlive = false },
+        )
+    }
+
+    if (showDisclaimer) {
+        // 这里是非关卡模式：用户主动打开的，随手关掉即可，不需要再同意一次。
+        DisclaimerDialog(blocking = false, onDismiss = { showDisclaimer = false })
+    }
+}
+
+/**
+ * 保活设置。
+ *
+ * 这一页是 1.2.5 真机心跳数据直接催生的：模拟服务在用户切到步道乐跑后被系统
+ * **冻结了 137 秒**，145 秒的会话里只有约 8 秒真正在推送位置。
+ * 冻结期间系统里没有任何模拟值，对方读到的当然是真实定位 ——
+ * 这与「被反作弊识别」结果一样、原因完全不同，而且是可以修的。
+ *
+ * 修它只能改系统设置（应用无权自己给自己开白名单），所以这里把三个入口摆出来，
+ * 并且**实时显示哪一项还没打开** —— MIUI 把这些开关藏在三四个不同的地方。
+ */
+@Composable
+private fun KeepAliveDialog(
+    context: android.content.Context,
+    onDismiss: () -> Unit,
+) {
+    // 每次打开重算一次：用户可能刚从系统设置里回来。
+    var battery by remember { mutableStateOf(KeepAlive.isIgnoringBatteryOptimizations(context)) }
+    var overlay by remember { mutableStateOf(KeepAlive.canDrawOverlays(context)) }
+
+    // 用户点进系统设置、授权、再返回 —— Activity 不一定重建，
+    // 所以这里轮询刷新，否则勾选状态会一直停在「未开启」，让人以为没生效。
+    LaunchedEffect(Unit) {
+        while (true) {
+            battery = KeepAlive.isIgnoringBatteryOptimizations(context)
+            overlay = KeepAlive.canDrawOverlays(context)
+            kotlinx.coroutines.delay(1_000)
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("保活设置") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Text(
+                    text = "为什么需要：切到校园跑这类 App 后，系统会冻结本应用，" +
+                        "那段时间模拟位置完全停止推送 —— 对方读到真实位置，" +
+                        "看起来像被反作弊识别，其实是后台被冻住了。\n\n" +
+                        "实测数据（1.2.5）：一次 2 分 25 秒的模拟里，有 137 秒被冻结。",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Spacer(Modifier.height(12.dp))
+
+                KeepAliveRow(
+                    title = "① 电池优化白名单",
+                    done = battery,
+                    required = true,
+                    hint = "必做。省电策略改成「无限制」后系统才会停止冻结后台。",
+                    onClick = { KeepAlive.openBatterySettings(context); },
+                )
+                Spacer(Modifier.height(8.dp))
+                KeepAliveRow(
+                    title = "② 自启动 + 锁定后台",
+                    done = false,
+                    required = true,
+                    hint = "MIUI：安全中心 → 应用管理 → 权限 → 自启动；" +
+                        "再在最近任务里下拉本应用卡片加锁。应用读不到这两项状态，需自行确认。",
+                    onClick = { KeepAlive.openAutostartSettings(context) },
+                )
+                Spacer(Modifier.height(8.dp))
+                KeepAliveRow(
+                    title = "③ 显示悬浮窗",
+                    done = overlay,
+                    required = false,
+                    hint = "可选。常驻一个看不见的 1×1 窗口，抬高进程优先级 —— " +
+                        "影梭的摇杆就是同类做法。不确定一定有效，但没有副作用。",
+                    onClick = { KeepAlive.openOverlaySettings(context); },
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("关闭") }
+        },
+        dismissButton = {
+            TextButton(onClick = {
+                KeepAlive.openAppDetails(context)
+            }) { Text("应用设置页") }
+        },
+    )
+}
+
+@Composable
+private fun KeepAliveRow(
+    title: String,
+    done: Boolean,
+    required: Boolean,
+    hint: String,
+    onClick: () -> Unit,
+) {
+    Surface(
+        shape = RoundedCornerShape(10.dp),
+        color = if (done) MintSoft else MaterialTheme.colorScheme.surfaceVariant,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = title + if (done) "　已开启 ✓" else if (required) "　未开启 ✗" else "　未授权",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (done) MintDeep else MaterialTheme.colorScheme.onSurface,
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = hint,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Icon(
+                Icons.Filled.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+/**
+ * 定位诊断：把「模拟位置覆盖了哪些来源」摊开给用户看。
+ *
+ * 为什么要做这个：当某个 App（比如校园跑）仍然显示真实位置时，
+ * 第一件要确认的事是「模拟位置到底挂上了哪几个 provider」。
+ * 这个信息以前只写在 logcat 里，而看不到 logcat 就等于没有。
+ *
+ * 读到的内容分两段：
+ *   1. 本应用挂载成功的 provider；
+ *   2. 系统里**全部** provider 的当前值，以及各自是否被标记为 [模拟]。
+ *
+ * 第二段能给出一个明确判断：如果所有 provider 都已是模拟值却仍无效，
+ * 说明对方根本没读系统定位（大概率自建网络定位），免 root 方案就到此为止了。
+ */
+@Composable
+private fun LocationDiagDialog(
+    context: android.content.Context,
+    onDismiss: () -> Unit,
+) {
+    val clipboard = LocalClipboardManager.current
+
+    // 后台定位权限 —— 这一条比上面那些 provider 状态更可能是「切到别的 App 就失效」的真凶。
+    // Android 11+ 不能弹窗申请，必须由用户去应用设置里手动选「始终允许」，所以要给跳转入口。
+    val hasBackgroundLocation = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+        androidx.core.content.ContextCompat.checkSelfPermission(
+            context,
+            android.Manifest.permission.ACCESS_BACKGROUND_LOCATION,
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    } else {
+        true
+    }
+
+    // 打开对话框的那一刻取一次快照：值会随模拟实时变化，
+    // 每次重组都重读会让文字跳个不停。
+    //
+    // 这里把三段拼成**同一份文本**，显示的和「复制」出去的完全一致 ——
+    // 之前「复制」只复制了 provider 那一段，权限状态和心跳都丢了，
+    // 结果用户贴回来的诊断缺了最关键的信息。
+    val text = remember {
+        val permLine = if (hasBackgroundLocation) {
+            "✓ 后台定位权限：已授予"
+        } else {
+            "✗ 后台定位权限：未授予 —— 切到其他 App 后位置推送会被系统掐断"
+        }
+
+        val heartbeat = runCatching { MockHeartbeat.summary(context) }
+            .getOrElse { "  读取失败：${it.javaClass.simpleName}\n" }
+
+        val providers = runCatching {
+            val lm = context.getSystemService(android.content.Context.LOCATION_SERVICE)
+                as? android.location.LocationManager
+            if (lm == null) "无法访问定位服务" else MockLocationEngine.diagnose(lm)
+        }.getOrElse { "读取失败：${it.javaClass.simpleName} ${it.message}" }
+
+        buildString {
+            append("【后台定位权限】\n  ").append(permLine).append("\n\n")
+            append("【后台存活心跳】\n").append(heartbeat).append("\n\n")
+            append(providers)
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("定位诊断") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                // 权限状态放在最前面：它是最常见、也最容易修的原因
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = if (hasBackgroundLocation) {
+                        MintSoft
+                    } else {
+                        MaterialTheme.colorScheme.errorContainer
+                    },
+                ) {
+                    Text(
+                        text = if (hasBackgroundLocation) {
+                            "✓ 后台定位权限：已授予"
+                        } else {
+                            "✗ 后台定位权限：未授予\n切到其他 App（如校园跑）后，位置推送会被系统掐断 —— " +
+                                "这会被误判成「对方有反作弊检测」。请点左下角「去授权」，在设置里选「始终允许」。"
+                        },
+                        modifier = Modifier.padding(10.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (hasBackgroundLocation) {
+                            MintDeep
+                        } else {
+                            MaterialTheme.colorScheme.onErrorContainer
+                        },
+                    )
+                }
+                Spacer(Modifier.height(10.dp))
+
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    text = "怎么用：开始模拟 → 切到目标 App 待 2~3 分钟 → 切回来打开这里（不要先停止模拟）。\n" +
+                        "先看「后台存活心跳」那一段，它会直接给结论：\n" +
+                        "· 推送一直正常 → 与本应用无关，对方没读系统定位或主动过滤了模拟值；\n" +
+                        "· 有大段中断 → 进程被系统冻结/杀了，去「保活设置」里把省电策略改成「无限制」。\n\n" +
+                        "下面两段的读法（和直觉相反，别读错）：\n" +
+                        "· [模拟] **不代表有问题** —— 免 root 的模拟位置必定带这个标记且改不掉，" +
+                        "实测全部 [模拟] 时目标 App 照样能读到模拟值；\n" +
+                        "· 「最后位置：无」或某个 provider 显示 [真实] 也不代表失效 —— " +
+                        "getLastKnownLocation 读的是各 provider 自己的缓存，而模拟值是实时推给监听者的，两者不是一回事。",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        confirmButton = {
+            Row {
+                TextButton(onClick = {
+                    // 把本应用加入电池优化白名单。
+                    //
+                    // 这是「切到校园跑后模拟失效」最可能的解药：MIUI / 各家 ROM 的
+                    // 省电策略会在应用转入后台后冻结甚至杀掉前台服务，
+                    // 冻结期间系统 provider 不再收到模拟值，对方拿到的就是真实定位 ——
+                    // 现象和「被反作弊识别」一模一样，光看结果分不出来。
+                    //
+                    // Android 6 起系统自带这个授权页，一次点击即可；
+                    // 部分 ROM 会忽略该 Intent，此时回退到电池优化列表页。
+                    val pkg = context.packageName
+                    val direct = android.content.Intent(
+                        android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                    ).setData(android.net.Uri.fromParts("package", pkg, null))
+                    val fallback = android.content.Intent(
+                        android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS,
+                    )
+                    val ok = runCatching { context.startActivity(direct) }.isSuccess ||
+                        runCatching { context.startActivity(fallback) }.isSuccess
+                    if (!ok) {
+                        android.widget.Toast.makeText(
+                            context, "请手动在 设置 → 应用 → 省电策略 中选「无限制」",
+                            android.widget.Toast.LENGTH_LONG,
+                        ).show()
+                    }
+                }) { Text("省电白名单") }
+                TextButton(onClick = onDismiss) { Text("关闭") }
+            }
+        },
+        dismissButton = {
+            Row {
+                TextButton(onClick = {
+                    clipboard.setText(AnnotatedString(text))
+                }) { Text("复制") }
+                TextButton(onClick = {
+                    // 直接跳到本应用的系统设置页。Android 11+ 的后台定位只能在那里改，
+                    // 而它藏得比较深（权限 → 位置信息 → 始终允许），所以给个直达入口。
+                    val intent = android.content.Intent(
+                        android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        android.net.Uri.fromParts("package", context.packageName, null),
+                    )
+                    runCatching { context.startActivity(intent) }
+                }) { Text("去授权") }
+            }
+        },
+    )
 }
 
 /**

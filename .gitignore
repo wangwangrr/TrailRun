@@ -18,6 +18,11 @@ local.properties
 # 注意 `*.apk` 在上面，这里必须用 `!` 取消忽略 —— 顺序有意义，后面的覆盖前面的。
 !release/
 !release/*.apk
+# 但**调试版不进仓库**：一个就 17 MB，`release/` 里堆几版就会超过
+# tools/push-to-github.mjs 的 60 MB 总量上限（实测 5 个调试版 + 5 个精简版 = 98.5 MB，
+# 直接推不上去）。调试版放在 Releases 附件里，那里不算仓库体积。
+# 下面这条不带 `!`，是**重新忽略** —— 最后一条匹配的规则生效。
+/release/*-debug.apk
 
 # ---- 本机工具链与缓存：体积以 GB 计，绝对不能入库 ----
 # .toolchain/ 里是 Gradle 发行版、ffmpeg、Android Studio 安装包、osmdroid 源码、瓦片样张

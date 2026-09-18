@@ -7,6 +7,21 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <!--
+      ⚠️ 后台定位权限 —— 缺失会导致「切到别的 App 后模拟失效」。
+
+      现象：在本应用里点开始模拟时一切正常（前台），一旦切到其他 App
+      （例如校园跑类），本应用转入后台，位置推送被系统掐断，
+      对方读到的就是真实定位。这与「模拟位置没被接受」是完全不同的两件事，
+      极容易误判成对方有反作弊检测。
+
+      影梭（ZCShou/GoGoGo）在 Manifest 里声明了这条权限 —— 这是它与本项目
+      在「用户亲自验证过能生效」的场景下最主要的差异。
+
+      Android 10 可在申请前台定位时一并授予；
+      Android 11+ 必须由用户在系统设置里手动选「始终允许」，因此界面上要给出引导。
+    -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <!--
       系统「选择模拟位置信息应用」列表会按本权限过滤候选应用。
       缺少它时，应用在开发者选项里根本不会出现，也就无法被授权注入位置。
       该权限在 API 23 起被标记为 deprecated，但仍必须声明。
@@ -19,6 +34,17 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!--
+      常驻一个 1×1 的透明窗口。
+
+      目的不是显示什么，而是让进程在系统眼里「有可见窗口」，从而不被后台冻结/清理。
+      影梭（ZCShou/GoGoGo）常驻一个摇杆悬浮窗，这是它与本项目最结构性的一处差异 ——
+      实测本项目不保活时进程会被 MIUI 冻结 137 秒，那段时间模拟位置完全停止推送。
+
+      该权限必须由用户在「设置 → 应用 → 权限 → 显示悬浮窗」里手动授予，
+      拿不到时只是不加窗口，功能照常（见 KeepAlive.addOverlay）。
+    -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <application
         android:name=".TrailRunApp"

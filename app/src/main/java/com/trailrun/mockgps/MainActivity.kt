@@ -11,6 +11,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import com.trailrun.mockgps.service.MockLocationService
 import com.trailrun.mockgps.ui.RootScreen
 import com.trailrun.mockgps.ui.theme.TrailRunTheme
 
@@ -41,6 +42,24 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    /**
+     * 界面转入后台 —— 用户正要切去别的 App（多半就是校园跑）。
+     *
+     * 通知服务立刻把 provider 重挂一遍：这是把用户实测有效的操作序列
+     * 「停止模拟 → 再开始模拟」自动化掉。少了这一步，先开模拟再开校园跑是不生效的。
+     */
+    override fun onStop() {
+        runCatching { MockLocationService.onUiBackground() }
+            .onFailure { android.util.Log.w("MainActivity", "通知服务重挂失败", it) }
+        super.onStop()
+    }
+
+    /** 界面回到前台：让服务停下周期性重挂，别在用户操作时打扰系统。 */
+    override fun onStart() {
+        super.onStart()
+        runCatching { MockLocationService.onUiForeground() }
     }
 
     private fun askNotificationPermission() {

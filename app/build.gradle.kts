@@ -29,10 +29,14 @@ android {
         applicationId = "com.trailrun.mockgps"
         minSdk = 26
         targetSdk = 34
-        // 4 / 1.2.0：验证页增加「随机口算」方式，可与「名字缩写」任选其一进入。
+        // 8 / 1.2.4：对照影梭（ZCShou/GoGoGo）源码逐项比对后，补上三处关键差异 ——
+        // 1) Manifest 缺 ACCESS_BACKGROUND_LOCATION：切到其他 App 后本应用转入后台，
+        //    位置推送被系统掐断，对方读到真实定位，极易被误判成「对方有反作弊检测」；
+        // 2) 推送频率 200ms → 100ms（影梭用 Thread.sleep(100)，即 10 Hz）；
+        // 3) 位置加 extras satellites=7（影梭的做法，部分定位 SDK 会读它判断是否真实 GPS）。
         // versionCode 必须递增，否则新包盖不上手机上已装的旧包。
-        versionCode = 4
-        versionName = "1.2.0"
+        versionCode = 12
+        versionName = "1.2.8"
         vectorDrawables { useSupportLibrary = true }
     }
 

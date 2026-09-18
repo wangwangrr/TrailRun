@@ -72,8 +72,23 @@ fun RootScreen(
     //
     // 同理，口令页是这条链上的**第三个**完整 composable，不是插入到 RootContent 里的分支。
     var showSplash by rememberSaveable { mutableStateOf(true) }
+
+    // 首次启动的免责声明关卡。读一次 SharedPreferences 即可，不需要 saveable：
+    // 屏幕旋转时它要么已经同意过（false），要么还该拦着（true）。
+    var showDisclaimer by remember { mutableStateOf(!Disclaimer.hasAccepted(context)) }
     when {
         showSplash -> SplashScreen(onFinished = { showSplash = false })
+
+        // 首次启动必须先点掉使用须知才能进入。
+        // 放在口令页**之前**：那是本应用最该先说清楚的一件事，不该被任何东西挡住。
+        // 只在本机没同意过时出现一次，之后从「更多工具 → 使用须知」可随时重看。
+        showDisclaimer -> DisclaimerDialog(
+            blocking = true,
+            onDismiss = {
+                Disclaimer.accept(context)
+                showDisclaimer = false
+            },
+        )
 
         // 启动页之后、主界面之前。locked 来自本地持久化：
         // 本设备输对过一次之后它永远是 false，这里就再也不会经过。

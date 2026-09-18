@@ -57,20 +57,58 @@
 
 ---
 
+## 使用限制与免责声明
+
+> **本项目不建议、也不允许用于任何形式的作弊。**
+>
+> 它是一个 Android 定位机制的学习与研究工具 —— 用来了解 `LocationManager`、
+> test provider、模拟位置标记这些东西是怎么工作的，以及测试自己开发的定位类应用
+> 在位置变化下的表现。
+
+**明确禁止的用途：**
+
+- 校园跑、运动打卡等任何形式的**成绩代跑**；
+- 考勤打卡、签到、外勤轨迹；
+- 游戏或其他依赖真实位置的服务。
+
+### 「不可用于作弊」不只是立场，技术上也不成立
+
+这一点值得单独说清楚，因为它同时解释了本项目的很多设计取舍：
+
+免 root 的模拟位置会被 Android **强制**标记为模拟 —— `Location.isMock = true`
+（旧版本叫 `isFromMockProvider`）。**这个标记在客户端改不掉**：
+`setTestProviderLocation()` 是跨进程调用，系统收到后会重新打上标记，写入前怎么改都没用。
+
+本项目曾经尝试用反射抹除这个标记（`Location.setMock(false)`）。真机诊断的结果是：
+反射调用「成功」，但读回来依然是 `[模拟]` —— 而模拟位置在目标应用里
+**本来就已经能正常生效了**，说明对方根本不看这个标记。那段代码纯属每秒 20 次的反射开销，
+**已在 1.2.8 删除**。
+
+也就是说：
+
+- 本应用**不再尝试**把模拟位置伪装成真实定位；
+- 任何做基本校验的应用都能一眼识别出模拟位置；
+- 靠它绕过定位校验，本来就走不通。
+
+### 责任
+
+使用本应用产生的一切后果**由使用者自行承担**。作者不提供任何与作弊相关的支持，
+也不对因此造成的任何损失负责。请同时遵守你所在学校与平台的规定。
+
+---
+
 一个用于**定位功能开发调试 / 地图测试 / 隐私保护**的 Android 虚拟定位工具。
 支持在浅色地图上**像画图一样手绘轨迹**，也可点选起终点；设定速度后一键回放，
 支持环线刷圈、目标距离、轨迹抖动与路线预设。
 
-> ⚠️ **使用须知**
-> 本工具用于定位相关功能的开发调试、地图与导航应用测试、以及不希望在运动记录中暴露真实住址的隐私保护场景。
-> 部分校园跑 / 运动打卡类应用会检测模拟位置、异常配速与加速度，可能判定成绩无效。是否使用请自行判断，
-> 并遵守你所在学校与平台的规定。
+> ⚠️ 上面那段「使用限制与免责声明」不是样板文字，请实际读一遍。
+> 首次启动时应用也会要求你确认同样的内容。
 
 ---
 
 ## 下载
 
-最新版 **v1.2.0**（Android 8.0+，无需 Root）。两个包功能完全相同，**任选一个**：
+最新版 **v1.2.8**（Android 8.0+，无需 Root）。两个包功能完全相同，**任选一个**：
 
 | 版本 | 体积 | 说明 |
 | --- | --- | --- |
@@ -79,13 +117,23 @@
 
 **国内优先走 jsDelivr**（有国内节点，通常最快）：
 
-- 精简版 → [`TrailRun-1.2.0.apk`](https://cdn.jsdelivr.net/gh/wangwangrr/TrailRun@main/release/TrailRun-1.2.0.apk)
-- 调试版 → [`TrailRun-1.2.0-debug.apk`](https://cdn.jsdelivr.net/gh/wangwangrr/TrailRun@main/release/TrailRun-1.2.0-debug.apk)
+- 精简版 → [`TrailRun-1.2.8.apk`](https://cdn.jsdelivr.net/gh/wangwangrr/TrailRun@main/release/TrailRun-1.2.8.apk)
 
-其他渠道：[GitHub Release](https://github.com/wangwangrr/TrailRun/releases/latest) ·
-[raw 直链目录](https://raw.githubusercontent.com/wangwangrr/TrailRun/main/release/)
+其他渠道：
+
+- 调试版 → [Release 附件](https://github.com/wangwangrr/TrailRun/releases/download/v1.2.8/TrailRun-1.2.8-debug.apk)
+- [GitHub Release](https://github.com/wangwangrr/TrailRun/releases/latest)
+- [raw 直链目录](https://raw.githubusercontent.com/wangwangrr/TrailRun/main/release/)
 
 **两个包签名相同，可以互相覆盖安装** —— 来回切换不会丢路线预设。
+
+> 仓库里的 `release/` 只放**精简版**：调试版一个就 17 MB，堆几版就会超过
+> 推送脚本 60 MB 的总量上限。历史版本和调试版都在
+> [Releases](https://github.com/wangwangrr/TrailRun/releases) 页面上。
+
+**v1.2.1 ~ v1.2.8 改了什么，见 [CHANGELOG](CHANGELOG.md)。**
+简单说：修好了「切到校园跑就失效」（真正原因是进程被系统冻结，
+不是被反作弊识别），并删掉了一处实测无效、每秒空跑 20 次的反射开销。
 
 > ⚠️ **当前默认底图（OpenStreetMap）的版图标注不符合我国规定** ——
 > 其渲染样式把台湾标注为独立的行政边界。
