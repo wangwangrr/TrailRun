@@ -115,15 +115,22 @@
 | **精简版**（推荐） | **2.5 MB** | 经 R8 代码裁剪，日常使用选这个 |
 | 调试版 | 17.2 MB | 不裁剪、可调试；精简版万一出问题时用它回退 |
 
-**国内优先走 jsDelivr**（有国内节点，通常最快）：
+**国内优先走 jsDelivr**（有国内节点，通常最快）。
+下面三个域名指向**同一份文件**，哪个通用哪个 ——
+2026-09-18 在本机校园网实测，只有 `gcore` 能通，`cdn` 与 `fastly` 都超时：
 
-- 精简版 → [`TrailRun-1.2.8.apk`](https://cdn.jsdelivr.net/gh/wangwangrr/TrailRun@main/release/TrailRun-1.2.8.apk)
+- gcore → [`TrailRun-1.2.8.apk`](https://gcore.jsdelivr.net/gh/wangwangrr/TrailRun@main/release/TrailRun-1.2.8.apk)
+- fastly → [`TrailRun-1.2.8.apk`](https://fastly.jsdelivr.net/gh/wangwangrr/TrailRun@main/release/TrailRun-1.2.8.apk)
+- cdn → [`TrailRun-1.2.8.apk`](https://cdn.jsdelivr.net/gh/wangwangrr/TrailRun@main/release/TrailRun-1.2.8.apk)
 
 其他渠道：
 
 - 调试版 → [Release 附件](https://github.com/wangwangrr/TrailRun/releases/download/v1.2.8/TrailRun-1.2.8-debug.apk)
 - [GitHub Release](https://github.com/wangwangrr/TrailRun/releases/latest)
 - [raw 直链目录](https://raw.githubusercontent.com/wangwangrr/TrailRun/main/release/)
+
+> ⚠️ `github.com` 和 `raw.githubusercontent.com` 在部分网络（尤其校园网）下**时通时不通**，
+> Release 附件的下载入口是 `github.com`，所以国内更推荐上面那三条 jsDelivr 链接。
 
 **两个包签名相同，可以互相覆盖安装** —— 来回切换不会丢路线预设。
 
