@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">轨迹跑</string>
+    <string name="notif_channel_name">轨迹模拟运行中</string>
+    <string name="notif_channel_desc">显示当前轨迹回放状态</string>
+</resources>

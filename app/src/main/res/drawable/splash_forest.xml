@@ -1,0 +1,86 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="360dp"
+    android:height="640dp"
+    android:viewportWidth="360"
+    android:viewportHeight="640">
+
+    <!-- 1. 天空：暖金渐变，秋日黄昏 -->
+    <path android:pathData="M0,0h360v640h-360z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear"
+                android:startX="180" android:startY="0"
+                android:endX="180" android:endY="640">
+                <item android:offset="0.0" android:color="#FFFDF7E8" />
+                <item android:offset="0.5" android:color="#FFF8E9C8" />
+                <item android:offset="1.0" android:color="#FFEFD9A8" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- 2. 远山树线：一整条波浪带 -->
+    <path
+        android:fillColor="#FFC3D6C8"
+        android:pathData="M0,392 C30,372 54,384 84,364 C114,344 138,368 168,352 C198,336 226,362 256,346 C286,330 316,354 360,340 L360,640 L0,640 Z" />
+
+    <!-- 3. 中景树林：更深的绿，形成纵深 -->
+    <path
+        android:fillColor="#FF8FB29C"
+        android:pathData="M0,452 C34,432 60,446 92,428 C124,410 150,434 182,420 C214,406 240,430 272,416 C304,402 332,424 360,412 L360,640 L0,640 Z" />
+
+    <!-- 4. 近景地面 -->
+    <path
+        android:fillColor="#FF6E9A82"
+        android:pathData="M0,516 C60,500 120,516 180,508 C240,500 300,516 360,504 L360,640 L0,640 Z" />
+
+    <!-- 5. 小路左支：从底部向上收拢 -->
+    <path
+        android:fillColor="#FFF0DFB6"
+        android:pathData="M116,640 C136,588 156,548 174,516 L182,516 C168,552 152,594 144,640 Z" />
+
+    <!-- 6. 小路右支：与左支在 516 高度汇合，形成分岔 -->
+    <path
+        android:fillColor="#FFE7D3A6"
+        android:pathData="M216,640 C204,596 194,552 182,516 L174,516 C176,552 188,596 200,640 Z" />
+
+    <!-- 7. 左侧树冠：贴左上角，向右下探出 -->
+    <path
+        android:fillColor="#FF35604C"
+        android:pathData="M0,0 L168,0 C160,44 140,78 150,120 C160,162 132,196 140,240 C148,284 118,318 126,362 C132,398 108,424 96,452 L0,470 Z" />
+
+    <!-- 8. 右侧树冠：与左侧呼应，中间留出透光通道 -->
+    <path
+        android:fillColor="#FF35604C"
+        android:pathData="M360,0 L196,0 C204,40 224,74 214,116 C204,158 232,192 224,236 C216,280 246,314 238,358 C232,394 256,420 268,448 L360,464 Z" />
+
+    <!-- 9. 地面暗部：让小路末端有「走进林子」的感觉 -->
+    <path
+        android:fillColor="#33405E4C"
+        android:pathData="M90,470 C130,456 160,470 180,462 C200,470 230,456 270,470 L270,640 L90,640 Z" />
+
+    <!-- 10. 中央透光：落在分岔口上 -->
+    <path android:pathData="M150,150 L210,150 L246,500 L114,500 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear"
+                android:startX="180" android:startY="150"
+                android:endX="180" android:endY="500">
+                <item android:offset="0.0" android:color="#00FFF6D8" />
+                <item android:offset="0.5" android:color="#38FFEDBE" />
+                <item android:offset="1.0" android:color="#00FFEDBE" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- 11. 底部压暗：给文字留出可读区域 -->
+    <path android:pathData="M0,430h360v210h-360z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="linear"
+                android:startX="180" android:startY="430"
+                android:endX="180" android:endY="640">
+                <item android:offset="0.0" android:color="#00000000" />
+                <item android:offset="0.55" android:color="#33162E24" />
+                <item android:offset="1.0" android:color="#B3162E24" />
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>

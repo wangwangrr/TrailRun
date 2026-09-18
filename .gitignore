@@ -1,0 +1,26 @@
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+/app/build/
+*.apk
+*.keystore
+
+# ---- 本机工具链与缓存：体积以 GB 计，绝对不能入库 ----
+# .toolchain/ 里是 Gradle 发行版、ffmpeg、Android Studio 安装包、osmdroid 源码、瓦片样张
+.toolchain/
+# .gradle-home/ 是本项目的 GRADLE_USER_HOME（依赖 + 构建缓存），约 1.4 GB
+.gradle-home/
+
+# 算法自检脚本的编译输出（tools/verify-algorithms.ps1 生成）
+/tools/verify-out/
+
+# 崩溃日志（真机调试时可能被拷进来）
+*.log
+last_crash.txt

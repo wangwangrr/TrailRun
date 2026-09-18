@@ -1,0 +1,27 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- 一笔画出的轨迹：薄荷绿曲线 -->
+    <path
+        android:pathData="M34,74 C34,58 48,56 54,46 C60,36 72,36 76,32"
+        android:strokeColor="#35B98A"
+        android:strokeWidth="9"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <!-- 起点：实心小圆 -->
+    <path
+        android:fillColor="#35B98A"
+        android:pathData="M34,74 m-9,0 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0" />
+    <path
+        android:fillColor="#EAF7F2"
+        android:pathData="M34,74 m-3.6,0 a3.6,3.6 0 1,0 7.2,0 a3.6,3.6 0 1,0 -7.2,0" />
+    <!-- 终点：蜜桃色描边圆环 -->
+    <path
+        android:fillColor="#FF8A80"
+        android:pathData="M76,32 m-9,0 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0" />
+    <path
+        android:fillColor="#EAF7F2"
+        android:pathData="M76,32 m-3.6,0 a3.6,3.6 0 1,0 7.2,0 a3.6,3.6 0 1,0 -7.2,0" />
+</vector>
